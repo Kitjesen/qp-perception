@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+models/*.pt
+models/*.onnx
