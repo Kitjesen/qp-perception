@@ -30,8 +30,14 @@ logger = logging.getLogger(__name__)
 
 _HF_REPO = "kaiyangzhou/osnet"
 _WEIGHT_FILES = {
-    "osnet_x1_0": "osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth",
-    "osnet_x0_25": "osnet_x0_25_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_b64_fb10_softmax_labelsmooth_flip_jitter.pth",
+    "osnet_x1_0": (
+        "osnet_x1_0_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_"
+        "b64_fb10_softmax_labelsmooth_flip_jitter.pth"
+    ),
+    "osnet_x0_25": (
+        "osnet_x0_25_msmt17_combineall_256x128_amsgrad_ep150_stp60_lr0.0015_"
+        "b64_fb10_softmax_labelsmooth_flip_jitter.pth"
+    ),
 }
 _CONFIGS = {
     "osnet_x1_0": {"channels": [64, 256, 384, 512], "feature_dim": 512},

@@ -316,7 +316,10 @@ class AppearanceGallery:
             )
 
     @staticmethod
-    def _box_iou_xywh(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    def _box_iou_xywh(
+        a: tuple[float, float, float, float],
+        b: tuple[float, float, float, float],
+    ) -> float:
         """IoU for XYWH boxes."""
         ax1, ay1, aw, ah = a
         bx1, by1, bw, bh = b
@@ -423,7 +426,10 @@ class AppearanceGallery:
                 qvx, qvy = query_velocity
                 ls = (lvx * lvx + lvy * lvy) ** 0.5
                 qs = (qvx * qvx + qvy * qvy) ** 0.5
-                if ls > self._cfg.direction_gate_min_speed and qs > self._cfg.direction_gate_min_speed:
+                if (
+                    ls > self._cfg.direction_gate_min_speed
+                    and qs > self._cfg.direction_gate_min_speed
+                ):
                     cos_dir = (lvx * qvx + lvy * qvy) / max(ls * qs, 1e-6)
                     if cos_dir < self._cfg.dir_consistency_min_cos:
                         continue
@@ -445,7 +451,9 @@ class AppearanceGallery:
             w_motion = max(0.05, self._cfg.motion_weight * (1.0 - 0.6 * uncertainty))
             w_iou = self._cfg.iou_weight
             w_sum = w_app + w_motion + w_iou
-            fused = (w_app * app_score + w_motion * motion_score + w_iou * iou_score) / max(w_sum, 1e-6)
+            fused = (
+                w_app * app_score + w_motion * motion_score + w_iou * iou_score
+            ) / max(w_sum, 1e-6)
             if fused < self._cfg.min_fused_score:
                 continue
 

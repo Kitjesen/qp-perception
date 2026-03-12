@@ -2,8 +2,11 @@
 
 import pytest
 
-from qp_perception.selection.multi import TargetAllocator, TargetAssignment
-from qp_perception.selection.multi import WeightedMultiTargetSelector
+from qp_perception.selection.multi import (
+    TargetAllocator,
+    TargetAssignment,
+    WeightedMultiTargetSelector,
+)
 from qp_perception.types import BoundingBox, TargetObservation, Track
 
 

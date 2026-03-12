@@ -318,7 +318,9 @@ class WeightedMultiTargetSelector:
         return selected
 
     # Backwards-compatible alias
-    def select(self, tracks: list[Track], timestamp: float, max_targets: int = 3) -> list[TargetObservation]:
+    def select(
+        self, tracks: list[Track], timestamp: float, max_targets: int = 3
+    ) -> list[TargetObservation]:
         return self.select_multiple(tracks, timestamp, max_targets=max_targets)
 
     def _compute_score(self, track: Track, timestamp: float) -> float:

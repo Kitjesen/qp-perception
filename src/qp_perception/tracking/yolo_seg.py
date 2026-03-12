@@ -37,10 +37,10 @@ from qp_perception.kalman import (
     KalmanCAConfig,
     KalmanConfig,
 )
-from qp_perception.types import BoundingBox, Track
+from qp_perception.reid.extractor import ReIDConfig, ReIDExtractor
 from qp_perception.reid.gallery import AppearanceGallery, GalleryConfig
 from qp_perception.tracking.cmc import CameraMotionCompensator
-from qp_perception.reid.extractor import ReIDConfig, ReIDExtractor
+from qp_perception.types import BoundingBox, Track
 
 logger = logging.getLogger(__name__)
 

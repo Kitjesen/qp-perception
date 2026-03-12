@@ -12,7 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class WeightedTargetSelector:
-    def __init__(self, frame_width: int, frame_height: int, config: SelectorConfig | None = None) -> None:
+    def __init__(
+        self,
+        frame_width: int,
+        frame_height: int,
+        config: SelectorConfig | None = None,
+    ) -> None:
         self._w = frame_width
         self._h = frame_height
         self._cfg = config if config is not None else SelectorConfig()
