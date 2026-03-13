@@ -46,11 +46,11 @@ _CONFIGS = {
 
 
 class _ConvBnRelu(nn.Module):
-    def __init__(self, in_c: int, out_c: int, k: int, s: int = 1,
-                 p: int = 0, groups: int = 1) -> None:
+    def __init__(
+        self, in_c: int, out_c: int, k: int, s: int = 1, p: int = 0, groups: int = 1
+    ) -> None:
         super().__init__()
-        self.conv = nn.Conv2d(in_c, out_c, k, stride=s, padding=p,
-                              bias=False, groups=groups)
+        self.conv = nn.Conv2d(in_c, out_c, k, stride=s, padding=p, bias=False, groups=groups)
         self.bn = nn.BatchNorm2d(out_c)
         self.relu = nn.ReLU(inplace=True)
 
@@ -85,8 +85,7 @@ class _LightConv3x3(nn.Module):
     def __init__(self, in_c: int, out_c: int) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(in_c, out_c, 1, bias=False)
-        self.conv2 = nn.Conv2d(out_c, out_c, 3, padding=1, bias=False,
-                               groups=out_c)
+        self.conv2 = nn.Conv2d(out_c, out_c, 3, padding=1, bias=False, groups=out_c)
         self.bn = nn.BatchNorm2d(out_c)
         self.relu = nn.ReLU(inplace=True)
 
@@ -118,39 +117,41 @@ class _OSBlock(nn.Module):
         mid = out_c // br
         self.conv1 = _Conv1x1(in_c, mid)
         self.conv2a = _LightConv3x3(mid, mid)
-        self.conv2b = nn.Sequential(_LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid))
-        self.conv2c = nn.Sequential(_LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid))
-        self.conv2d = nn.Sequential(_LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid),
-                                    _LightConv3x3(mid, mid))
+        self.conv2b = nn.Sequential(_LightConv3x3(mid, mid), _LightConv3x3(mid, mid))
+        self.conv2c = nn.Sequential(
+            _LightConv3x3(mid, mid), _LightConv3x3(mid, mid), _LightConv3x3(mid, mid)
+        )
+        self.conv2d = nn.Sequential(
+            _LightConv3x3(mid, mid),
+            _LightConv3x3(mid, mid),
+            _LightConv3x3(mid, mid),
+            _LightConv3x3(mid, mid),
+        )
         self.gate = _ChannelGate(mid)
         self.conv3 = _Conv1x1Linear(mid, out_c)
-        self.downsample = (_Conv1x1Linear(in_c, out_c)
-                           if in_c != out_c else None)
+        self.downsample = _Conv1x1Linear(in_c, out_c) if in_c != out_c else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         x1 = self.conv1(x)
-        x2 = (self.gate(self.conv2a(x1)) + self.gate(self.conv2b(x1))
-              + self.gate(self.conv2c(x1)) + self.gate(self.conv2d(x1)))
+        x2 = (
+            self.gate(self.conv2a(x1))
+            + self.gate(self.conv2b(x1))
+            + self.gate(self.conv2c(x1))
+            + self.gate(self.conv2d(x1))
+        )
         out = self.conv3(x2)
         if self.downsample is not None:
             identity = self.downsample(identity)
         return F.relu(out + identity)
 
 
-def _make_stage(n_blocks: int, in_c: int, out_c: int,
-                pool: bool) -> nn.Sequential:
+def _make_stage(n_blocks: int, in_c: int, out_c: int, pool: bool) -> nn.Sequential:
     layers: list[nn.Module] = [_OSBlock(in_c, out_c)]
     for _ in range(1, n_blocks):
         layers.append(_OSBlock(out_c, out_c))
     if pool:
-        layers.append(nn.Sequential(_Conv1x1(out_c, out_c),
-                                    nn.AvgPool2d(2, stride=2)))
+        layers.append(nn.Sequential(_Conv1x1(out_c, out_c), nn.AvgPool2d(2, stride=2)))
     return nn.Sequential(*layers)
 
 
@@ -183,15 +184,13 @@ class OSNet(nn.Module):
         return self.fc(x)
 
 
-def build_osnet(variant: str = "osnet_x1_0",
-                device: torch.device | None = None) -> OSNet:
+def build_osnet(variant: str = "osnet_x1_0", device: torch.device | None = None) -> OSNet:
     """Build OSNet and load MSMT17 person Re-ID pretrained weights.
 
     Weights are auto-downloaded from HuggingFace on first use (~18 MB).
     """
     if variant not in _CONFIGS:
-        raise ValueError(f"Unknown OSNet variant: {variant}. "
-                         f"Choose from {list(_CONFIGS.keys())}")
+        raise ValueError(f"Unknown OSNet variant: {variant}. Choose from {list(_CONFIGS.keys())}")
 
     cfg = _CONFIGS[variant]
     model = OSNet(channels=cfg["channels"], feature_dim=cfg["feature_dim"])
@@ -204,9 +203,13 @@ def build_osnet(variant: str = "osnet_x1_0",
     model.eval()
 
     param_count = sum(p.numel() for p in model.parameters()) / 1e6
-    logger.info("OSNet %s loaded  params=%.1fM  dim=%d  device=%s",
-                variant, param_count, cfg["feature_dim"],
-                device or "cpu")
+    logger.info(
+        "OSNet %s loaded  params=%.1fM  dim=%d  device=%s",
+        variant,
+        param_count,
+        cfg["feature_dim"],
+        device or "cpu",
+    )
     return model
 
 
@@ -214,6 +217,7 @@ def _download_weights(variant: str) -> str:
     """Download pretrained weights from HuggingFace (cached)."""
     try:
         from huggingface_hub import hf_hub_download
+
         cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "rws_reid")
         path = hf_hub_download(
             repo_id=_HF_REPO,
@@ -244,6 +248,10 @@ def _load_reid_weights(model: OSNet, path: str) -> None:
 
     own.update(matched)
     model.load_state_dict(own)
-    logger.info("Loaded %d/%d layers from Re-ID checkpoint (skipped %d: %s)",
-                len(matched), len(state_dict), len(skipped),
-                skipped[:5] if skipped else "none")
+    logger.info(
+        "Loaded %d/%d layers from Re-ID checkpoint (skipped %d: %s)",
+        len(matched),
+        len(state_dict),
+        len(skipped),
+        skipped[:5] if skipped else "none",
+    )

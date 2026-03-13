@@ -1,6 +1,5 @@
 """PassthroughDetector 单元测试。"""
 
-
 from qp_perception.detection.passthrough import PassthroughDetector
 from qp_perception.types import BoundingBox, Detection
 

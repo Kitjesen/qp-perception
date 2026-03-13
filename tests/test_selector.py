@@ -159,8 +159,8 @@ class TestWeightedTargetSelector:
         # Track 1 at screen center (640,360) -> high center_proximity score wins first selection.
         # Track 2 far in corner -> lower overall score, can't overcome switch penalty.
         tracks = [
-            create_track(1, (540, 260, 200, 200), confidence=0.8),   # center=(640,360)
-            create_track(2, (50, 50, 100, 100), confidence=0.82),     # center=(100,100), far
+            create_track(1, (540, 260, 200, 200), confidence=0.8),  # center=(640,360)
+            create_track(2, (50, 50, 100, 100), confidence=0.82),  # center=(100,100), far
         ]
 
         # Select track 1 first
@@ -176,8 +176,8 @@ class TestWeightedTargetSelector:
         """When current target disappears, should select new one."""
         # Track 1 at center wins first selection; track 2 far in corner.
         tracks1 = [
-            create_track(1, (540, 260, 200, 200), confidence=0.8),   # center=(640,360)
-            create_track(2, (50, 50, 100, 100), confidence=0.7),      # center=(100,100), far
+            create_track(1, (540, 260, 200, 200), confidence=0.8),  # center=(640,360)
+            create_track(2, (50, 50, 100, 100), confidence=0.7),  # center=(100,100), far
         ]
 
         # Select track 1
@@ -217,7 +217,7 @@ class TestWeightedTargetSelector:
         # Track 1 at center wins first selection; track 2 far in corner.
         tracks = [
             create_track(1, (540, 260, 200, 200), confidence=0.80),  # center=(640,360)
-            create_track(2, (50, 50, 100, 100), confidence=0.81),     # center=(100,100), far
+            create_track(2, (50, 50, 100, 100), confidence=0.81),  # center=(100,100), far
         ]
 
         # Select track 1

@@ -12,17 +12,23 @@ from qp_perception.types import BoundingBox, TargetObservation, Track
 
 def _obs(tid=1, x=600, y=340, w=80, h=150, conf=0.9, cls="person"):
     return TargetObservation(
-        timestamp=0.0, track_id=tid,
+        timestamp=0.0,
+        track_id=tid,
         bbox=BoundingBox(x=x, y=y, w=w, h=h),
-        confidence=conf, class_id=cls,
+        confidence=conf,
+        class_id=cls,
     )
 
 
 def _track(tid=1, x=600, y=340, w=80, h=150, conf=0.9, cls="person"):
     return Track(
-        track_id=tid, bbox=BoundingBox(x=x, y=y, w=w, h=h),
-        confidence=conf, class_id=cls,
-        first_seen_ts=0.0, last_seen_ts=0.0, age_frames=10,
+        track_id=tid,
+        bbox=BoundingBox(x=x, y=y, w=w, h=h),
+        confidence=conf,
+        class_id=cls,
+        first_seen_ts=0.0,
+        last_seen_ts=0.0,
+        age_frames=10,
     )
 
 

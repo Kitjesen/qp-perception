@@ -382,8 +382,7 @@ class CentroidKalmanCA:
         self._x = self._x + K @ y
         self._P = (self._I6 - K @ self._H) @ self._P
 
-    def update_with_confidence(self, cx: float, cy: float,
-                               confidence: float = 1.0) -> None:
+    def update_with_confidence(self, cx: float, cy: float, confidence: float = 1.0) -> None:
         """Fuse a centroid measurement with confidence-scaled noise.
 
         Higher detection confidence → smaller R → measurement trusted more.

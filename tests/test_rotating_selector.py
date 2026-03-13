@@ -8,9 +8,13 @@ from qp_perception.types import BoundingBox, Track
 
 def _track(tid=1, x=600, y=340, w=80, h=150, conf=0.9, cls="person"):
     return Track(
-        track_id=tid, bbox=BoundingBox(x=x, y=y, w=w, h=h),
-        confidence=conf, class_id=cls,
-        first_seen_ts=0.0, last_seen_ts=0.0, age_frames=10,
+        track_id=tid,
+        bbox=BoundingBox(x=x, y=y, w=w, h=h),
+        confidence=conf,
+        class_id=cls,
+        first_seen_ts=0.0,
+        last_seen_ts=0.0,
+        age_frames=10,
     )
 
 
@@ -18,7 +22,8 @@ class TestRotatingTargetSelector:
     @pytest.fixture
     def selector(self):
         return RotatingTargetSelector(
-            frame_width=1280, frame_height=720,
+            frame_width=1280,
+            frame_height=720,
             dwell_time_s=1.0,
         )
 

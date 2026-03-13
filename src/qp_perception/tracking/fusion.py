@@ -70,13 +70,13 @@ _KP_KNEE_R = 14
 # 8 bone pairs for skeleton proportion descriptor (normalized by torso diagonal)
 _SKELETON_BONES: tuple[tuple[int, int], ...] = (
     (_KP_SHOULDER_L, _KP_SHOULDER_R),  # shoulder span
-    (_KP_HIP_L, _KP_HIP_R),            # hip span
-    (_KP_SHOULDER_L, _KP_HIP_L),       # left torso
-    (_KP_SHOULDER_R, _KP_HIP_R),       # right torso
-    (_KP_SHOULDER_L, _KP_ELBOW_L),     # left upper arm
-    (_KP_SHOULDER_R, _KP_ELBOW_R),     # right upper arm
-    (_KP_HIP_L, _KP_KNEE_L),           # left thigh
-    (_KP_HIP_R, _KP_KNEE_R),           # right thigh
+    (_KP_HIP_L, _KP_HIP_R),  # hip span
+    (_KP_SHOULDER_L, _KP_HIP_L),  # left torso
+    (_KP_SHOULDER_R, _KP_HIP_R),  # right torso
+    (_KP_SHOULDER_L, _KP_ELBOW_L),  # left upper arm
+    (_KP_SHOULDER_R, _KP_ELBOW_R),  # right upper arm
+    (_KP_HIP_L, _KP_KNEE_L),  # left thigh
+    (_KP_HIP_R, _KP_KNEE_R),  # right thigh
 )
 
 
@@ -158,15 +158,25 @@ class _Tracklet:
     """Internal tracklet state with embedded Kalman CA filter."""
 
     __slots__ = (
-        "track_id", "kf", "feature_ema", "feature_bank", "bbox",
-        "height_ema", "confidence", "state", "frames_since_update",
-        "total_frames", "last_ts", "created_ts",
-        "keypoints_ema",   # EMA-smoothed COCO-17 keypoints (17, 2) or None
-        "last_obs_cx", "last_obs_cy", "last_obs_ts",  # OC-SORT ORU anchor
+        "track_id",
+        "kf",
+        "feature_ema",
+        "feature_bank",
+        "bbox",
+        "height_ema",
+        "confidence",
+        "state",
+        "frames_since_update",
+        "total_frames",
+        "last_ts",
+        "created_ts",
+        "keypoints_ema",  # EMA-smoothed COCO-17 keypoints (17, 2) or None
+        "last_obs_cx",
+        "last_obs_cy",
+        "last_obs_ts",  # OC-SORT ORU anchor
     )
 
-    def __init__(self, track_id: int, cx: float, cy: float,
-                 kalman_cfg: KalmanCAConfig) -> None:
+    def __init__(self, track_id: int, cx: float, cy: float, kalman_cfg: KalmanCAConfig) -> None:
         self.track_id = track_id
         self.kf = CentroidKalmanCA(cx0=cx, cy0=cy, config=kalman_cfg)
         self.feature_ema: np.ndarray | None = None
@@ -205,8 +215,7 @@ class _Tracklet:
         """Bbox with Kalman-predicted center, preserving last w/h."""
         pos = self.position
         w, h = self.bbox[2], self.bbox[3]
-        return np.array([pos[0] - w / 2, pos[1] - h / 2, w, h],
-                        dtype=np.float64)
+        return np.array([pos[0] - w / 2, pos[1] - h / 2, w, h], dtype=np.float64)
 
 
 class FusionMOT:
@@ -221,8 +230,7 @@ class FusionMOT:
         tracks = tracker.update(detections, features, timestamp)
     """
 
-    def __init__(self, config: FusionMOTConfig | None = None,
-                 feature_dim: int = 512) -> None:
+    def __init__(self, config: FusionMOTConfig | None = None, feature_dim: int = 512) -> None:
         self._cfg = config or FusionMOTConfig()
         self._feature_dim = feature_dim
         self._tracklets: dict[int, _Tracklet] = {}
@@ -230,12 +238,17 @@ class FusionMOT:
         self._frame_count = 0
         self._last_global_ts: float = 0.0
 
-        logger.info("FusionMOT initialized  weights=(iou=%.2f, app=%.2f, "
-                     "motion=%.2f, height=%.2f)  kalman=CA(6-state)  "
-                     "mahalanobis=%s(σ=%.1f)",
-                     self._cfg.w_iou, self._cfg.w_appearance,
-                     self._cfg.w_motion, self._cfg.w_height,
-                     self._cfg.use_mahalanobis, self._cfg.mahalanobis_sigma)
+        logger.info(
+            "FusionMOT initialized  weights=(iou=%.2f, app=%.2f, "
+            "motion=%.2f, height=%.2f)  kalman=CA(6-state)  "
+            "mahalanobis=%s(σ=%.1f)",
+            self._cfg.w_iou,
+            self._cfg.w_appearance,
+            self._cfg.w_motion,
+            self._cfg.w_height,
+            self._cfg.use_mahalanobis,
+            self._cfg.mahalanobis_sigma,
+        )
 
     @property
     def active_tracks(self) -> dict[int, _Tracklet]:
@@ -289,14 +302,16 @@ class FusionMOT:
         # When gimbal ego-motion is provided, use EMAP to decouple platform
         # rotation from target motion in the Kalman prediction step.
         use_emap = (
-            (abs(gimbal_delta_yaw_deg) > 1e-4 or abs(gimbal_delta_pitch_deg) > 1e-4)
-            and camera_fx > 0.0
-        )
+            abs(gimbal_delta_yaw_deg) > 1e-4 or abs(gimbal_delta_pitch_deg) > 1e-4
+        ) and camera_fx > 0.0
         for t in self._tracklets.values():
             if use_emap:
                 t.kf.predict_with_ego_motion(
-                    dt, gimbal_delta_yaw_deg, gimbal_delta_pitch_deg,
-                    camera_fx, camera_fy,
+                    dt,
+                    gimbal_delta_yaw_deg,
+                    gimbal_delta_pitch_deg,
+                    camera_fx,
+                    camera_fy,
                 )
             else:
                 t.kf.predict(dt)
@@ -319,8 +334,11 @@ class FusionMOT:
         low_idx = np.where(low_mask)[0]
 
         # Get active + lost tracklet IDs for matching
-        track_ids = [tid for tid, t in self._tracklets.items()
-                     if t.state in ("confirmed", "tentative", "lost")]
+        track_ids = [
+            tid
+            for tid, t in self._tracklets.items()
+            if t.state in ("confirmed", "tentative", "lost")
+        ]
 
         matched_track_set: set[int] = set()
         matched_det_set: set[int] = set()
@@ -335,7 +353,8 @@ class FusionMOT:
         # ═══ Stage 1: High-conf detections vs ALL tracks (full cost) ═══
         if len(high_idx) > 0 and len(track_ids) > 0:
             cost = self._build_cost_matrix(
-                track_ids, bboxes[high_idx],
+                track_ids,
+                bboxes[high_idx],
                 features[high_idx] if features is not None else None,
                 det_keypoints=_kpts_slice(high_idx),
             )
@@ -345,7 +364,9 @@ class FusionMOT:
                 tid = track_ids[ti]
                 det_i = high_idx[di]
                 self._update_tracklet(
-                    tid, bboxes[det_i], confidences[det_i],
+                    tid,
+                    bboxes[det_i],
+                    confidences[det_i],
                     features[det_i] if features is not None else None,
                     timestamp,
                     kpts=_kpts(det_i),
@@ -354,19 +375,21 @@ class FusionMOT:
                 matched_det_set.add(int(det_i))
 
         # ═══ Stage 2: Low-conf detections vs UNMATCHED tracks (IoU only) ═══
-        remaining_tracks = [tid for tid in track_ids
-                           if tid not in matched_track_set]
+        remaining_tracks = [tid for tid in track_ids if tid not in matched_track_set]
 
         if len(low_idx) > 0 and len(remaining_tracks) > 0:
             cost_s2 = self._build_iou_cost(remaining_tracks, bboxes[low_idx])
             t_matched2, d_matched2 = self._hungarian_match(
-                cost_s2, threshold=1.0 - self._cfg.stage2_iou_gate)
+                cost_s2, threshold=1.0 - self._cfg.stage2_iou_gate
+            )
 
             for ti, di in zip(t_matched2, d_matched2):
                 tid = remaining_tracks[ti]
                 det_i = low_idx[di]
                 self._update_tracklet(
-                    tid, bboxes[det_i], confidences[det_i],
+                    tid,
+                    bboxes[det_i],
+                    confidences[det_i],
                     None,  # no appearance update for low-conf
                     timestamp,
                     # no keypoint update for low-conf to avoid noisy poses
@@ -376,33 +399,39 @@ class FusionMOT:
 
         # ═══ Stage 3: Unmatched high-conf dets vs lost tracks (Re-ID recovery) ═══
         unmatched_high = [int(i) for i in high_idx if int(i) not in matched_det_set]
-        lost_tracks = [tid for tid, t in self._tracklets.items()
-                       if t.state == "lost" and tid not in matched_track_set]
+        lost_tracks = [
+            tid
+            for tid, t in self._tracklets.items()
+            if t.state == "lost" and tid not in matched_track_set
+        ]
 
         # Also include confirmed tracks that weren't matched (brief occlusion)
-        patience_tracks = [tid for tid, t in self._tracklets.items()
-                           if t.state == "confirmed"
-                           and t.frames_since_update > 0
-                           and tid not in matched_track_set]
+        patience_tracks = [
+            tid
+            for tid, t in self._tracklets.items()
+            if t.state == "confirmed" and t.frames_since_update > 0 and tid not in matched_track_set
+        ]
         recovery_tracks = lost_tracks + patience_tracks
 
         if unmatched_high and recovery_tracks:
             uh_bboxes = bboxes[unmatched_high]
             uh_feats = features[unmatched_high] if features is not None else None
-            uh_kpts = (keypoints[unmatched_high]
-                       if keypoints is not None else None)
+            uh_kpts = keypoints[unmatched_high] if keypoints is not None else None
             cost_s3 = self._build_recovery_cost(
-                recovery_tracks, uh_bboxes, uh_feats,
+                recovery_tracks,
+                uh_bboxes,
+                uh_feats,
                 det_keypoints=uh_kpts,
             )
-            t_m3, d_m3 = self._hungarian_match(
-                cost_s3, threshold=self._cfg.lost_match_threshold)
+            t_m3, d_m3 = self._hungarian_match(cost_s3, threshold=self._cfg.lost_match_threshold)
 
             for ti, di in zip(t_m3, d_m3):
                 tid = recovery_tracks[ti]
                 det_i = unmatched_high[di]
                 self._update_tracklet(
-                    tid, bboxes[det_i], confidences[det_i],
+                    tid,
+                    bboxes[det_i],
+                    confidences[det_i],
                     features[det_i] if features is not None else None,
                     timestamp,
                     kpts=_kpts(det_i),
@@ -414,7 +443,8 @@ class FusionMOT:
         for i in high_idx:
             if int(i) not in matched_det_set:
                 self._init_tracklet(
-                    bboxes[i], confidences[i],
+                    bboxes[i],
+                    confidences[i],
                     features[i] if features is not None else None,
                     timestamp,
                     kpts=_kpts(i),
@@ -425,8 +455,7 @@ class FusionMOT:
             if tid not in matched_track_set:
                 t = self._tracklets[tid]
                 t.frames_since_update += 1
-                if (t.state == "confirmed"
-                        and t.frames_since_update > self._cfg.lost_patience):
+                if t.state == "confirmed" and t.frames_since_update > self._cfg.lost_patience:
                     t.state = "lost"
 
         self._cleanup(timestamp)
@@ -464,17 +493,16 @@ class FusionMOT:
         det_heights = det_bboxes[:, 3]
 
         # Precompute skeleton descriptors for all detections (once per frame)
-        compute_skel = (cfg.w_skeleton > 0.0 and det_keypoints is not None)
+        compute_skel = cfg.w_skeleton > 0.0 and det_keypoints is not None
         det_skel_descs: list[np.ndarray | None] = []
         det_vis: list[np.ndarray | None] = []
         if compute_skel:
             for j in range(N):
-                kp = det_keypoints[j]           # (17, 2) or (17, 3)
+                kp = det_keypoints[j]  # (17, 2) or (17, 3)
                 v = kp[:, 2] if kp.shape[1] == 3 else None
                 xy = kp[:, :2]
                 det_vis.append(v)
-                det_skel_descs.append(
-                    self._skeleton_descriptor(xy, v, cfg.kp_visibility_thresh))
+                det_skel_descs.append(self._skeleton_descriptor(xy, v, cfg.kp_visibility_thresh))
         else:
             det_vis = [None] * N
             det_skel_descs = [None] * N
@@ -489,7 +517,8 @@ class FusionMOT:
             t_skel_desc: np.ndarray | None = None
             if compute_skel and t.keypoints_ema is not None:
                 t_skel_desc = self._skeleton_descriptor(
-                    t.keypoints_ema, None, cfg.kp_visibility_thresh)
+                    t.keypoints_ema, None, cfg.kp_visibility_thresh
+                )
 
             # Precompute inverse covariance for Mahalanobis
             if cfg.use_mahalanobis:
@@ -498,7 +527,7 @@ class FusionMOT:
                 try:
                     cov_inv = np.linalg.inv(cov_reg)
                 except np.linalg.LinAlgError:
-                    cov_inv = np.eye(2) / (cfg.motion_gate_px ** 2)
+                    cov_inv = np.eye(2) / (cfg.motion_gate_px**2)
             else:
                 cov_inv = None
 
@@ -506,11 +535,8 @@ class FusionMOT:
             # weight from IoU toward appearance.  IoU reliability degrades as the
             # Kalman-predicted bbox drifts; appearance (feature bank) is more
             # identity-stable.  Only active when features are available.
-            if (t.frames_since_update > cfg.occlusion_onset_frames
-                    and det_features is not None):
-                occ_alpha = min(
-                    (t.frames_since_update - cfg.occlusion_onset_frames) / 5.0, 1.0
-                )
+            if t.frames_since_update > cfg.occlusion_onset_frames and det_features is not None:
+                occ_alpha = min((t.frames_since_update - cfg.occlusion_onset_frames) / 5.0, 1.0)
                 transfer = cfg.occlusion_app_boost * occ_alpha
                 w_iou_eff = max(cfg.w_iou - transfer, 0.05)
                 w_app_eff = cfg.w_appearance + transfer
@@ -530,17 +556,17 @@ class FusionMOT:
                 eucl_dist = float(np.linalg.norm(delta))
                 if cov_inv is not None:
                     mahal_sq = float(delta @ cov_inv @ delta)
-                    mahal_ok = mahal_sq <= cfg.mahalanobis_sigma ** 2
+                    mahal_ok = mahal_sq <= cfg.mahalanobis_sigma**2
                     pixel_ok = eucl_dist <= cfg.min_motion_gate_px
                     if not (mahal_ok or pixel_ok) and t.state != "lost":
                         continue
-                    motion_cost = min(mahal_sq ** 0.5 / cfg.mahalanobis_sigma, 1.0)
+                    motion_cost = min(mahal_sq**0.5 / cfg.mahalanobis_sigma, 1.0)
                     if pixel_ok and not mahal_ok:
                         motion_cost = min(eucl_dist / cfg.motion_gate_px, 1.0)
                 else:
                     gate_r = cfg.motion_gate_px
                     if t.state == "lost":
-                        gate_r *= (1.0 + t.frames_since_update * 0.5)
+                        gate_r *= 1.0 + t.frames_since_update * 0.5
                     if eucl_dist > gate_r:
                         continue
                     motion_cost = min(eucl_dist / max(gate_r, 1.0), 1.0)
@@ -550,8 +576,10 @@ class FusionMOT:
                 if det_features is not None and t.feature_ema is not None:
                     cos_sim = float(t.feature_ema @ det_features[j])
                     if t.feature_bank:
-                        bank_sims = [float(f @ det_features[j])
-                                     for f, _, _ in t.feature_bank[-cfg.feature_bank_size:]]
+                        bank_sims = [
+                            float(f @ det_features[j])
+                            for f, _, _ in t.feature_bank[-cfg.feature_bank_size :]
+                        ]
                         bank_best = max(bank_sims)
                         cos_sim = max(cos_sim, 0.7 * cos_sim + 0.3 * bank_best)
                     if cos_sim < cfg.appearance_gate and t.state != "lost":
@@ -572,11 +600,13 @@ class FusionMOT:
                         continue  # biomechanical gate: body proportions too different
                     skel_cost = min(dist / max(cfg.skeleton_gate, 1e-6), 1.0)
 
-                total = (w_iou_eff * iou_cost
-                         + w_app_eff * app_cost
-                         + cfg.w_motion * motion_cost
-                         + cfg.w_height * h_cost
-                         + cfg.w_skeleton * skel_cost)
+                total = (
+                    w_iou_eff * iou_cost
+                    + w_app_eff * app_cost
+                    + cfg.w_motion * motion_cost
+                    + cfg.w_height * h_cost
+                    + cfg.w_skeleton * skel_cost
+                )
                 cost[i, j] = total
 
         return cost
@@ -604,14 +634,15 @@ class FusionMOT:
         det_centers = det_bboxes[:, :2] + det_bboxes[:, 2:4] / 2
         det_heights = det_bboxes[:, 3]
 
-        compute_skel = (cfg.w_skeleton > 0.0 and det_keypoints is not None)
+        compute_skel = cfg.w_skeleton > 0.0 and det_keypoints is not None
         det_skel_descs: list[np.ndarray | None] = []
         if compute_skel:
             for j in range(N):
                 kp = det_keypoints[j]
                 v = kp[:, 2] if kp.shape[1] == 3 else None
                 det_skel_descs.append(
-                    self._skeleton_descriptor(kp[:, :2], v, cfg.kp_visibility_thresh))
+                    self._skeleton_descriptor(kp[:, :2], v, cfg.kp_visibility_thresh)
+                )
         else:
             det_skel_descs = [None] * N
 
@@ -623,13 +654,14 @@ class FusionMOT:
             t_skel_desc: np.ndarray | None = None
             if compute_skel and t.keypoints_ema is not None:
                 t_skel_desc = self._skeleton_descriptor(
-                    t.keypoints_ema, None, cfg.kp_visibility_thresh)
+                    t.keypoints_ema, None, cfg.kp_visibility_thresh
+                )
 
             for j in range(N):
                 delta = det_centers[j] - t_center
                 dist = float(np.linalg.norm(delta))
                 gate_r = cfg.motion_gate_px * cfg.lost_motion_gate_multiplier
-                gate_r *= (1.0 + t.frames_since_update * 0.3)
+                gate_r *= 1.0 + t.frames_since_update * 0.3
                 if dist > gate_r:
                     continue
                 motion_cost = min(dist / max(gate_r, 1.0), 1.0)
@@ -638,8 +670,7 @@ class FusionMOT:
                 if det_features is not None and t.feature_ema is not None:
                     cos_sim = float(t.feature_ema @ det_features[j])
                     if t.feature_bank:
-                        bank_sims = [float(f @ det_features[j])
-                                     for f, _, _ in t.feature_bank]
+                        bank_sims = [float(f @ det_features[j]) for f, _, _ in t.feature_bank]
                         bank_best = max(bank_sims)
                         cos_sim = max(cos_sim, bank_best)
                     if cos_sim < cfg.lost_appearance_gate:
@@ -660,17 +691,18 @@ class FusionMOT:
                 # In recovery, skeleton descriptor carries extra weight as a
                 # person-identity anchor (body proportions are stable post-occlusion)
                 skel_w = cfg.w_skeleton * 1.5 if compute_skel else 0.0
-                total = (0.15 * motion_cost
-                         + 0.65 * app_cost
-                         + 0.10 * h_cost
-                         + 0.10 * (1.0 - self._iou(pred_bbox, det_bboxes[j]))
-                         + skel_w * skel_cost)
+                total = (
+                    0.15 * motion_cost
+                    + 0.65 * app_cost
+                    + 0.10 * h_cost
+                    + 0.10 * (1.0 - self._iou(pred_bbox, det_bboxes[j]))
+                    + skel_w * skel_cost
+                )
                 cost[i, j] = total
 
         return cost
 
-    def _build_iou_cost(self, track_ids: list[int],
-                        det_bboxes: np.ndarray) -> np.ndarray:
+    def _build_iou_cost(self, track_ids: list[int], det_bboxes: np.ndarray) -> np.ndarray:
         """IoU-only cost matrix for ByteTrack Stage 2 (Kalman-predicted bboxes)."""
         M = len(track_ids)
         N = len(det_bboxes)
@@ -686,8 +718,7 @@ class FusionMOT:
         return cost
 
     @staticmethod
-    def _hungarian_match(cost: np.ndarray,
-                         threshold: float) -> tuple[list[int], list[int]]:
+    def _hungarian_match(cost: np.ndarray, threshold: float) -> tuple[list[int], list[int]]:
         """Run Hungarian algorithm with gating threshold."""
         if cost.size == 0:
             return [], []
@@ -707,9 +738,14 @@ class FusionMOT:
     # Tracklet lifecycle
     # ------------------------------------------------------------------
 
-    def _init_tracklet(self, bbox: np.ndarray, conf: float,
-                       feat: np.ndarray | None, ts: float,
-                       kpts: np.ndarray | None = None) -> int:
+    def _init_tracklet(
+        self,
+        bbox: np.ndarray,
+        conf: float,
+        feat: np.ndarray | None,
+        ts: float,
+        kpts: np.ndarray | None = None,
+    ) -> int:
         tid = self._next_id
         self._next_id += 1
 
@@ -750,9 +786,15 @@ class FusionMOT:
         self._tracklets[tid] = t
         return tid
 
-    def _update_tracklet(self, tid: int, bbox: np.ndarray, conf: float,
-                         feat: np.ndarray | None, ts: float,
-                         kpts: np.ndarray | None = None) -> None:
+    def _update_tracklet(
+        self,
+        tid: int,
+        bbox: np.ndarray,
+        conf: float,
+        feat: np.ndarray | None,
+        ts: float,
+        kpts: np.ndarray | None = None,
+    ) -> None:
         t = self._tracklets[tid]
 
         # Prefer hip center as Kalman measurement when keypoints are available
@@ -769,8 +811,7 @@ class FusionMOT:
         # drift.  Correct it by mixing the observed displacement velocity
         # (Δpos / Δt over the gap) with the Kalman-predicted velocity.
         # Only applied when the gap is at least oru_min_gap_frames long.
-        if (t.frames_since_update >= self._cfg.oru_min_gap_frames
-                and t.last_obs_ts > 0.0):
+        if t.frames_since_update >= self._cfg.oru_min_gap_frames and t.last_obs_ts > 0.0:
             dt_gap = ts - t.last_obs_ts
             if dt_gap > 0.01:
                 v_obs_x = (float(center[0]) - t.last_obs_cx) / dt_gap
@@ -780,8 +821,11 @@ class FusionMOT:
                 logger.debug(
                     "Track %d ORU: gap=%d frames dt=%.3fs "
                     "v_obs=(%.1f,%.1f) kf_vel_after=(%.1f,%.1f)",
-                    tid, t.frames_since_update, dt_gap,
-                    v_obs_x, v_obs_y,
+                    tid,
+                    t.frames_since_update,
+                    dt_gap,
+                    v_obs_x,
+                    v_obs_y,
                     *t.kf.velocity,
                 )
 
@@ -820,7 +864,7 @@ class FusionMOT:
             if conf > sigma:
                 t.feature_bank.append((f.copy(), conf, ts))
                 if len(t.feature_bank) > self._cfg.feature_bank_size:
-                    t.feature_bank = t.feature_bank[-self._cfg.feature_bank_size:]
+                    t.feature_bank = t.feature_bank[-self._cfg.feature_bank_size :]
         elif feat is not None and t.feature_ema is None:
             f = feat.copy()
             n = np.linalg.norm(f)
@@ -854,8 +898,7 @@ class FusionMOT:
         for t in self._tracklets.values():
             if t.state in ("confirmed", "tentative"):
                 t.frames_since_update += 1
-                if (t.state == "confirmed"
-                        and t.frames_since_update > self._cfg.lost_patience):
+                if t.state == "confirmed" and t.frames_since_update > self._cfg.lost_patience:
                     t.state = "lost"
 
     def _cleanup(self, timestamp: float) -> None:
@@ -982,11 +1025,9 @@ class FusionMOT:
         # (left_shoulder → right_hip) for robustness against single-side occlusion.
         diag_candidates: list[float] = []
         if _vis(_KP_SHOULDER_R) and _vis(_KP_HIP_L):
-            diag_candidates.append(float(np.linalg.norm(
-                kpts[_KP_SHOULDER_R] - kpts[_KP_HIP_L])))
+            diag_candidates.append(float(np.linalg.norm(kpts[_KP_SHOULDER_R] - kpts[_KP_HIP_L])))
         if _vis(_KP_SHOULDER_L) and _vis(_KP_HIP_R):
-            diag_candidates.append(float(np.linalg.norm(
-                kpts[_KP_SHOULDER_L] - kpts[_KP_HIP_R])))
+            diag_candidates.append(float(np.linalg.norm(kpts[_KP_SHOULDER_L] - kpts[_KP_HIP_R])))
 
         if not diag_candidates:
             return None
@@ -1013,6 +1054,7 @@ class FusionMOT:
 # ======================================================================
 # FusionSegTracker: YOLO-Seg detection + FusionMOT tracking.
 # ======================================================================
+
 
 class FusionSegTracker:
     """YOLO-Seg + FusionMOT (with internal Kalman CA) + OSNet.
@@ -1078,7 +1120,9 @@ class FusionSegTracker:
 
         logger.info(
             "FusionSegTracker ready  model=%s  reid=%s  device=%s  kalman=internal_CA",
-            model_path, (reid_config or ReIDConfig()).backbone, device or "auto",
+            model_path,
+            (reid_config or ReIDConfig()).backbone,
+            device or "auto",
         )
 
     @property
@@ -1087,10 +1131,8 @@ class FusionSegTracker:
 
     @property
     def reid_stats(self) -> dict[str, int]:
-        active = sum(1 for t in self._mot.active_tracks.values()
-                     if t.state == "confirmed")
-        lost = sum(1 for t in self._mot.active_tracks.values()
-                   if t.state == "lost")
+        active = sum(1 for t in self._mot.active_tracks.values() if t.state == "confirmed")
+        lost = sum(1 for t in self._mot.active_tracks.values() if t.state == "lost")
         return {
             "enabled": 1,
             "active": active,
@@ -1100,8 +1142,7 @@ class FusionSegTracker:
             "skips": self._total_skips,
         }
 
-    def detect_and_track(self, frame: np.ndarray,
-                         timestamp: float) -> list[Track]:
+    def detect_and_track(self, frame: np.ndarray, timestamp: float) -> list[Track]:
         """Run full pipeline: detect → extract features → FusionMOT(Kalman).
 
         Automatically extracts COCO-17 keypoints when the loaded model is a
@@ -1126,7 +1167,7 @@ class FusionSegTracker:
 
         all_bboxes: list[np.ndarray] = []
         all_confs: list[float] = []
-        all_keypoints: list[np.ndarray] = []   # (17, 3) per detection: [x, y, vis]
+        all_keypoints: list[np.ndarray] = []  # (17, 3) per detection: [x, y, vis]
         has_pose = False
 
         for result in results:
@@ -1171,7 +1212,10 @@ class FusionSegTracker:
         self._total_extractions += N
 
         mot_results = self._mot.update(
-            bboxes_arr, confs_arr, features, timestamp,
+            bboxes_arr,
+            confs_arr,
+            features,
+            timestamp,
             keypoints=keypoints_arr,
         )
 
@@ -1183,27 +1227,35 @@ class FusionSegTracker:
             tracklet = self._mot.active_tracks.get(tid)
             vel = tracklet.kf.velocity if tracklet else (0.0, 0.0)
             acc = tracklet.kf.acceleration if tracklet else (0.0, 0.0)
-            kf_pos = tracklet.kf.position if tracklet else (
-                float(bbox_xywh[0] + bbox_xywh[2] / 2),
-                float(bbox_xywh[1] + bbox_xywh[3] / 2),
+            kf_pos = (
+                tracklet.kf.position
+                if tracklet
+                else (
+                    float(bbox_xywh[0] + bbox_xywh[2] / 2),
+                    float(bbox_xywh[1] + bbox_xywh[3] / 2),
+                )
             )
 
-            tracks.append(Track(
-                track_id=tid,
-                bbox=BoundingBox(
-                    x=float(bbox_xywh[0]), y=float(bbox_xywh[1]),
-                    w=float(bbox_xywh[2]), h=float(bbox_xywh[3]),
-                ),
-                confidence=conf,
-                class_id="person",
-                first_seen_ts=self._first_seen[tid],
-                last_seen_ts=timestamp,
-                age_frames=tracklet.total_frames if tracklet else 1,
-                misses=tracklet.frames_since_update if tracklet else 0,
-                velocity_px_per_s=vel,
-                acceleration_px_per_s2=acc,
-                mask_center=kf_pos,
-            ))
+            tracks.append(
+                Track(
+                    track_id=tid,
+                    bbox=BoundingBox(
+                        x=float(bbox_xywh[0]),
+                        y=float(bbox_xywh[1]),
+                        w=float(bbox_xywh[2]),
+                        h=float(bbox_xywh[3]),
+                    ),
+                    confidence=conf,
+                    class_id="person",
+                    first_seen_ts=self._first_seen[tid],
+                    last_seen_ts=timestamp,
+                    age_frames=tracklet.total_frames if tracklet else 1,
+                    misses=tracklet.frames_since_update if tracklet else 0,
+                    velocity_px_per_s=vel,
+                    acceleration_px_per_s2=acc,
+                    mask_center=kf_pos,
+                )
+            )
 
         # Purge first_seen for tracks that are fully deleted
         active_ids = set(self._mot.active_tracks.keys())

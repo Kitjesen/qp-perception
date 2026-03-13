@@ -184,8 +184,14 @@ class YoloSegTracker:
     def reid_stats(self) -> dict[str, int]:
         """Live Re-ID statistics for monitoring."""
         if not self._reid_enabled or self._gallery is None:
-            return {"enabled": 0, "active": 0, "lost": 0, "remaps": len(self._id_remap),
-                    "extractions": 0, "skips": 0}
+            return {
+                "enabled": 0,
+                "active": 0,
+                "lost": 0,
+                "remaps": len(self._id_remap),
+                "extractions": 0,
+                "skips": 0,
+            }
         return {
             "enabled": 1,
             "active": self._gallery.active_count,
@@ -222,15 +228,17 @@ class YoloSegTracker:
                 kf._x[0:2] = R @ pos + T
                 vel = np.array(kf.velocity, dtype=np.float64)
                 kf._x[2:4] = R @ vel
-                if hasattr(kf, 'acceleration') and len(kf._x) >= 6:
+                if hasattr(kf, "acceleration") and len(kf._x) >= 6:
                     acc = np.array(kf.acceleration, dtype=np.float64)
                     kf._x[4:6] = R @ acc
                 # Also rotate covariance (Deep OC-SORT Eq.1)
                 n = len(kf._x)
                 for block_start in range(0, n, 2):
                     if block_start + 1 < n:
-                        blk = kf._P[block_start:block_start+2, block_start:block_start+2]
-                        kf._P[block_start:block_start+2, block_start:block_start+2] = R @ blk @ R.T
+                        blk = kf._P[block_start : block_start + 2, block_start : block_start + 2]
+                        kf._P[block_start : block_start + 2, block_start : block_start + 2] = (
+                            R @ blk @ R.T
+                        )
 
         # ── Kalman predict step for ALL existing tracks ──
         dt = max(timestamp - self._last_ts, 1e-3) if self._last_ts > 0.0 else 0.033
@@ -338,8 +346,9 @@ class YoloSegTracker:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _bbox_iou(a: tuple[float, float, float, float],
-                  b: tuple[float, float, float, float]) -> float:
+    def _bbox_iou(
+        a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+    ) -> float:
         """IoU for (x, y, w, h) boxes."""
         ax1, ay1, aw, ah = a
         bx1, by1, bw, bh = b
@@ -378,9 +387,12 @@ class YoloSegTracker:
                 cw, ch = cur_bbox[2], cur_bbox[3]
                 if pw > 1 and ph > 1 and cw > 1 and ch > 1:
                     import math
-                    v = 1.0 - (4.0 / (math.pi * math.pi)) * (
-                        math.atan(cw / ch) - math.atan(pw / ph)
-                    ) ** 2
+
+                    v = (
+                        1.0
+                        - (4.0 / (math.pi * math.pi))
+                        * (math.atan(cw / ch) - math.atan(pw / ph)) ** 2
+                    )
                     alpha_ars = v / ((1.0 - iou) + v) if (1.0 - iou + v) > 1e-6 else 1.0
                     if alpha_ars < 0.6:
                         continue
@@ -444,8 +456,10 @@ class YoloSegTracker:
         features_map: dict[int, np.ndarray] = {}
 
         if need_extract_idx:
-            bboxes = [(tracks[i].bbox.x, tracks[i].bbox.y,
-                        tracks[i].bbox.w, tracks[i].bbox.h) for i in need_extract_idx]
+            bboxes = [
+                (tracks[i].bbox.x, tracks[i].bbox.y, tracks[i].bbox.w, tracks[i].bbox.h)
+                for i in need_extract_idx
+            ]
             feats = self._reid_extractor.extract(frame, bboxes)
             for j, i in enumerate(need_extract_idx):
                 bid = tracks[i].track_id
@@ -501,16 +515,17 @@ class YoloSegTracker:
                         self._filter_last_seen[old_id] = self._filter_last_seen.pop(
                             botsort_id, timestamp
                         )
-                        self._first_seen[old_id] = self._first_seen.pop(
-                            botsort_id, timestamp
-                        )
+                        self._first_seen[old_id] = self._first_seen.pop(botsort_id, timestamp)
 
                     seen_ids.discard(botsort_id)
                     seen_ids.add(old_id)
 
                     logger.info(
                         "Re-ID REMAP: botsort_id=%d → recovered_id=%d  fused=%.3f  sim=%.3f",
-                        botsort_id, old_id, match.fused_score, match.similarity,
+                        botsort_id,
+                        old_id,
+                        match.fused_score,
+                        match.similarity,
                     )
 
             self._known_botsort_ids.add(botsort_id)
@@ -519,7 +534,9 @@ class YoloSegTracker:
 
             if feat is not None:
                 self._gallery.update_active(
-                    final_id, feat, timestamp,
+                    final_id,
+                    feat,
+                    timestamp,
                     confidence=track.confidence,
                     position=center,
                     feature_decay=was_skipped,

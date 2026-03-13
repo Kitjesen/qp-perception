@@ -141,12 +141,12 @@ class ReIDExtractor:
         """
         if backbone.startswith("osnet"):
             from .osnet import build_osnet
+
             model = build_osnet(variant=backbone, device=self._device)
             return model, model.feature_dim
 
         # Fallback: MobileNetV3-Small (ImageNet, not Re-ID specific)
-        base = models.mobilenet_v3_small(
-            weights=models.MobileNet_V3_Small_Weights.DEFAULT)
+        base = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.DEFAULT)
         model = nn.Sequential(base.features, base.avgpool, nn.Flatten())
         model.to(self._device)
         model.eval()
@@ -155,12 +155,14 @@ class ReIDExtractor:
     @staticmethod
     def _build_transform() -> transforms.Compose:
         """ImageNet normalization transform (applied to tensors)."""
-        return transforms.Compose([
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
+        return transforms.Compose(
+            [
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ]
+        )
 
     def _crop_and_preprocess(
         self,

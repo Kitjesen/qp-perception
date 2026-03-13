@@ -99,9 +99,7 @@ class CameraMotionCompensator:
             self._prev_gray = curr
             return identity
 
-        pts_next, status, _ = cv2.calcOpticalFlowPyrLK(
-            prev, curr, pts, None, **self._lk_params
-        )
+        pts_next, status, _ = cv2.calcOpticalFlowPyrLK(prev, curr, pts, None, **self._lk_params)
         if pts_next is None:
             self._prev_gray = curr
             return identity
