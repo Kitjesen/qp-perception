@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qp-perception"
-version = "0.1.0"
-description = "Modular visual perception library - detection, tracking, Re-ID, and target selection"
+version = "0.2.0"
+description = "Modular visual perception for robotics — FusionMOT tracking, OSNet Re-ID, person following"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["computer-vision", "tracking", "reid", "kalman", "yolo"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
