@@ -65,6 +65,9 @@ class ReIDExtractor:
         extractor = ReIDExtractor()
         features = extractor.extract(frame, bboxes)
         # features: np.ndarray, shape (N, feature_dim), L2-normalized rows
+
+    On S100P with Nash BPU, use backbone="bpu" to route through
+    ``BPUReIDExtractor`` for hardware-accelerated inference (~3ms vs ~15ms).
     """
 
     def __init__(self, config: ReIDConfig | None = None) -> None:
@@ -73,6 +76,25 @@ class ReIDExtractor:
         self._crop_h = cfg.crop_height
         self._batch_size = cfg.batch_size
         self._backbone_name = cfg.backbone
+
+        # BPU backend: delegate entirely to BPUReIDExtractor
+        if cfg.backbone == "bpu":
+            self._bpu_delegate = self._try_bpu_backend(cfg)
+            if self._bpu_delegate is not None:
+                self._FEATURE_DIM = self._bpu_delegate.feature_dim
+                self._model = None
+                self._device = None
+                self._transform = None
+                return
+            # BPU unavailable, fall back to osnet_x1_0
+            logger.warning("BPU backend unavailable, falling back to osnet_x1_0")
+            cfg = ReIDConfig(
+                backbone="osnet_x1_0", crop_width=cfg.crop_width,
+                crop_height=cfg.crop_height, device=cfg.device,
+                batch_size=cfg.batch_size,
+            )
+        else:
+            self._bpu_delegate = None
 
         if cfg.device and cfg.device != "auto":
             self._device = torch.device(cfg.device)
@@ -90,6 +112,19 @@ class ReIDExtractor:
             self._crop_w,
             self._crop_h,
         )
+
+    @staticmethod
+    def _try_bpu_backend(cfg: ReIDConfig):
+        """Try to create a BPU Re-ID extractor (S100P only)."""
+        try:
+            from qp_perception.reid.bpu_extractor import BPUReIDConfig, BPUReIDExtractor
+            return BPUReIDExtractor(BPUReIDConfig(
+                crop_width=cfg.crop_width,
+                crop_height=cfg.crop_height,
+            ))
+        except Exception as e:
+            logger.info("BPU Re-ID backend unavailable: %s", e)
+            return None
 
     @property
     def feature_dim(self) -> int:
@@ -115,6 +150,9 @@ class ReIDExtractor:
             Shape ``(N, feature_dim)``, L2-normalized feature vectors.
             Returns shape ``(0, feature_dim)`` if bboxes is empty.
         """
+        if self._bpu_delegate is not None:
+            return self._bpu_delegate.extract(frame, bboxes)
+
         if not bboxes:
             return np.empty((0, self._FEATURE_DIM), dtype=np.float32)
 
@@ -129,6 +167,8 @@ class ReIDExtractor:
         self, frame: np.ndarray, x: float, y: float, w: float, h: float
     ) -> np.ndarray:
         """Extract feature for a single bbox. Returns shape ``(feature_dim,)``."""
+        if self._bpu_delegate is not None:
+            return self._bpu_delegate.extract_single(frame, x, y, w, h)
         result = self.extract(frame, [(x, y, w, h)])
         if len(result) == 0:
             return np.zeros(self._FEATURE_DIM, dtype=np.float32)
