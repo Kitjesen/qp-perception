@@ -71,6 +71,8 @@ class YoloSegTracker:
         ``"cuda:0"``, ``"cpu"``, or ``""`` for auto.
     img_size : int
         Input image size (longer side).
+    max_detections : int or None
+        Optional cap passed through to Ultralytics max_det.
     kalman_config : KalmanCAConfig or KalmanConfig
         Pass ``KalmanCAConfig`` (default) to use the 6-state Constant-Acceleration
         model, or ``KalmanConfig`` for the 4-state Constant-Velocity model.
@@ -85,6 +87,7 @@ class YoloSegTracker:
         class_whitelist: Sequence[str] | None = None,
         device: str = "",
         img_size: int = 640,
+        max_detections: int | None = None,
         kalman_config: KalmanCAConfig | KalmanConfig | None = None,
         enable_reid: bool = False,
         reid_config: ReIDConfig | None = None,
@@ -99,6 +102,7 @@ class YoloSegTracker:
         self._tracker = tracker
         self._device = device
         self._img_size = img_size
+        self._max_detections = None if max_detections is None else max(int(max_detections), 1)
 
         self._id_to_name: dict[int, str] = self._model.names
         self._allowed_ids: list[int] | None = None
@@ -155,7 +159,7 @@ class YoloSegTracker:
         model_name = "CA (6-state)" if self._use_ca else "CV (4-state)"
         logger.info(
             "YoloSegTracker ready  model=%s  tracker=%s  conf=%.2f  "
-            "kalman=%s  reid=%s  whitelist=%s  device=%s",
+            "kalman=%s  reid=%s  whitelist=%s  device=%s  max_det=%s",
             model_path,
             tracker,
             self._conf,
@@ -163,6 +167,7 @@ class YoloSegTracker:
             enable_reid,
             class_whitelist,
             device or "auto",
+            self._max_detections if self._max_detections is not None else "default",
         )
 
     @property
@@ -246,17 +251,20 @@ class YoloSegTracker:
             kf.predict(dt)
 
         # ── YOLO-Seg + BoT-SORT inference ──
-        results = self._model.track(
-            source=frame,
-            persist=True,
-            tracker=self._tracker,
-            conf=self._conf,
-            iou=self._iou,
-            imgsz=self._img_size,
-            device=self._device or None,
-            classes=self._allowed_ids,
-            verbose=False,
-        )
+        track_kwargs = {
+            "source": frame,
+            "persist": True,
+            "tracker": self._tracker,
+            "conf": self._conf,
+            "iou": self._iou,
+            "imgsz": self._img_size,
+            "device": self._device or None,
+            "classes": self._allowed_ids,
+            "verbose": False,
+        }
+        if self._max_detections is not None:
+            track_kwargs["max_det"] = self._max_detections
+        results = self._model.track(**track_kwargs)
         self._last_raw_results = results
 
         tracks: list[Track] = []
